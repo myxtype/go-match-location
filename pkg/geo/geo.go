@@ -21,7 +21,7 @@ type GeoItem struct {
 	Member string
 }
 
-type GeoRadiusItem struct {
+type GeoPoint struct {
 	Lng    float64
 	Lat    float64
 	Member string
@@ -150,7 +150,7 @@ func (g *Geo) Hash(members ...string) ([]string, error) {
 }
 
 // Radius returns members within max distance of given point
-func (g *Geo) Radius(lng, lat, radius float64, unit string) ([]*GeoRadiusItem, error) {
+func (g *Geo) Radius(lng, lat, radius float64, unit string) ([]*GeoPoint, error) {
 	mul, err := extractUnit(unit)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (g *Geo) Radius(lng, lat, radius float64, unit string) ([]*GeoRadiusItem, e
 }
 
 // RadiusByMember returns members within max distance of given member's location
-func (g *Geo) RadiusByMember(member string, radius float64, unit string) ([]*GeoRadiusItem, error) {
+func (g *Geo) RadiusByMember(member string, radius float64, unit string) ([]*GeoPoint, error) {
 	elem, ok := g.sortedSet.Get(member)
 	if !ok {
 		return nil, ErrNull
@@ -174,8 +174,8 @@ func (g *Geo) RadiusByMember(member string, radius float64, unit string) ([]*Geo
 	return g.geoRadius0(lat, lng, radius*mul, unit)
 }
 
-func (g *Geo) membersOfGeoHashBox(longitude, latitude, radius float64, hash *geohash.HashBits) ([]*GeoRadiusItem, error) {
-	points := make([]*GeoRadiusItem, 0, 32)
+func (g *Geo) membersOfGeoHashBox(longitude, latitude, radius float64, hash *geohash.HashBits) ([]*GeoPoint, error) {
+	points := make([]*GeoPoint, 0, 32)
 	boxMin, boxMax := geohash.ScoresOfGeoHashBox(hash)
 
 	lower := &sortedset.ScoreBorder{Value: float64(boxMin)}
@@ -189,7 +189,7 @@ func (g *Geo) membersOfGeoHashBox(longitude, latitude, radius float64, hash *geo
 		dist := geohash.GetDistance(x, y, longitude, latitude)
 
 		if radius >= dist {
-			p := &GeoRadiusItem{
+			p := &GeoPoint{
 				Lng:    x,
 				Lat:    y,
 				Dist:   dist,
@@ -203,7 +203,7 @@ func (g *Geo) membersOfGeoHashBox(longitude, latitude, radius float64, hash *geo
 	return points, nil
 }
 
-func (g *Geo) geoMembersOfAllNeighbors(geoRadius *geohash.Radius, lon, lat, radius float64) ([]*GeoRadiusItem, error) {
+func (g *Geo) geoMembersOfAllNeighbors(geoRadius *geohash.Radius, lon, lat, radius float64) ([]*GeoPoint, error) {
 	neighbors := [9]*geohash.HashBits{
 		&geoRadius.Hash,
 		&geoRadius.North,
@@ -217,7 +217,7 @@ func (g *Geo) geoMembersOfAllNeighbors(geoRadius *geohash.Radius, lon, lat, radi
 	}
 
 	var lastProcessed int = 0
-	plist := make([]*GeoRadiusItem, 0, 64)
+	plist := make([]*GeoPoint, 0, 64)
 
 	for i, area := range neighbors {
 		if area.IsZero() {
@@ -239,7 +239,7 @@ func (g *Geo) geoMembersOfAllNeighbors(geoRadius *geohash.Radius, lon, lat, radi
 	return plist, nil
 }
 
-func (g *Geo) geoRadius0(lat0 float64, lng0 float64, radius float64, unit string) ([]*GeoRadiusItem, error) {
+func (g *Geo) geoRadius0(lat0 float64, lng0 float64, radius float64, unit string) ([]*GeoPoint, error) {
 	radiusArea, err := geohash.GetAreasByRadiusWGS84(lng0, lat0, radius)
 	if err != nil {
 		return nil, err

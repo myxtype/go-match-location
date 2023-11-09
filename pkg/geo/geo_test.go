@@ -37,12 +37,12 @@ func addToGeo(g *Geo, region *Region) {
 func TestNewGeo(t *testing.T) {
 	g := regionGeo()
 
-	pos, err := g.Pos("中华人民共和国", "澳门特别行政区")
+	pos, err := g.Pos("香港特别行政区", "澳门特别行政区")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Log(pos[0])
+	t.Log(pos[0], pos[1])
 	t.Log(g.Hash("澳门特别行政区"))
 
 	t.Log(g.Dist([2]string{"成都市", "南部县"}, "km"))
