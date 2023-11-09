@@ -115,11 +115,17 @@ func (g *Geo) Dist(members [2]string, unit string) (float64, error) {
 		}
 
 		lng, lat := geohash.DecodeToLongLatWGS84(uint64(elem.Score))
-		positions[i] = []float64{lat, lng}
+		positions[i] = []float64{lng, lat}
 	}
 
-	dis := geoDistance(positions[0][0], positions[0][1], positions[1][0], positions[1][1], unit)
-	return dis, nil
+	dist := geohash.GetDistance(positions[0][0], positions[0][1], positions[1][0], positions[1][1])
+
+	mul, err := extractUnit(unit)
+	if err != nil {
+		return 0, err
+	}
+
+	return dist / mul, nil
 }
 
 // Hash return geo-hash-code of given position
@@ -145,13 +151,11 @@ func (g *Geo) Hash(members ...string) ([]string, error) {
 
 // Radius returns members within max distance of given point
 func (g *Geo) Radius(lng, lat, radius float64, unit string) ([]*GeoRadiusItem, error) {
-	switch unit {
-	case "m":
-		// do nothing
-	case "km":
-		radius *= 1000
+	mul, err := extractUnit(unit)
+	if err != nil {
+		return nil, err
 	}
-	return g.geoRadius0(lat, lng, radius, unit)
+	return g.geoRadius0(lat, lng, radius*mul, unit)
 }
 
 // RadiusByMember returns members within max distance of given member's location
@@ -162,17 +166,15 @@ func (g *Geo) RadiusByMember(member string, radius float64, unit string) ([]*Geo
 	}
 	lng, lat := geohash.DecodeToLongLatWGS84(uint64(elem.Score))
 
-	switch unit {
-	case "m":
-		// do nothing
-	case "km":
-		radius *= 1000
+	mul, err := extractUnit(unit)
+	if err != nil {
+		return nil, err
 	}
 
-	return g.geoRadius0(lat, lng, radius, unit)
+	return g.geoRadius0(lat, lng, radius*mul, unit)
 }
 
-func (g *Geo) membersOfGeoHashBox(longitude, latitude, radius float64, hash *geohash.HashBits, unit string) ([]*GeoRadiusItem, error) {
+func (g *Geo) membersOfGeoHashBox(longitude, latitude, radius float64, hash *geohash.HashBits) ([]*GeoRadiusItem, error) {
 	points := make([]*GeoRadiusItem, 0, 32)
 	boxMin, boxMax := geohash.ScoresOfGeoHashBox(hash)
 
@@ -184,7 +186,7 @@ func (g *Geo) membersOfGeoHashBox(longitude, latitude, radius float64, hash *geo
 	for _, v := range elements {
 		x, y := geohash.DecodeToLongLatWGS84(uint64(v.Score))
 
-		dist := geoDistance(y, x, latitude, longitude, unit)
+		dist := geohash.GetDistance(x, y, longitude, latitude)
 
 		if radius >= dist {
 			p := &GeoRadiusItem{
@@ -201,7 +203,7 @@ func (g *Geo) membersOfGeoHashBox(longitude, latitude, radius float64, hash *geo
 	return points, nil
 }
 
-func (g *Geo) geoMembersOfAllNeighbors(geoRadius *geohash.Radius, lon, lat, radius float64, unit string) ([]*GeoRadiusItem, error) {
+func (g *Geo) geoMembersOfAllNeighbors(geoRadius *geohash.Radius, lon, lat, radius float64) ([]*GeoRadiusItem, error) {
 	neighbors := [9]*geohash.HashBits{
 		&geoRadius.Hash,
 		&geoRadius.North,
@@ -221,16 +223,12 @@ func (g *Geo) geoMembersOfAllNeighbors(geoRadius *geohash.Radius, lon, lat, radi
 		if area.IsZero() {
 			continue
 		}
-		// When a huge Radius (in the 5000 km range or more) is used,
-		// adjacent neighbors can be the same, leading to duplicated
-		// elements. Skip every range which is the same as the one
-		// processed previously.
 		if lastProcessed != 0 &&
 			area.Bits == neighbors[lastProcessed].Bits &&
 			area.Step == neighbors[lastProcessed].Step {
 			continue
 		}
-		ps, err := g.membersOfGeoHashBox(lon, lat, radius, area, unit)
+		ps, err := g.membersOfGeoHashBox(lon, lat, radius, area)
 		if err != nil {
 			return nil, err
 		} else {
@@ -247,19 +245,36 @@ func (g *Geo) geoRadius0(lat0 float64, lng0 float64, radius float64, unit string
 		return nil, err
 	}
 
-	plist, err := g.geoMembersOfAllNeighbors(radiusArea, lng0, lat0, radius, unit)
+	plist, err := g.geoMembersOfAllNeighbors(radiusArea, lng0, lat0, radius)
 	if err != nil {
 		return nil, err
+	}
+
+	mul, err := extractUnit(unit)
+	if err != nil {
+		return nil, err
+	}
+
+	if mul != 1 {
+		for _, n := range plist {
+			n.Dist = n.Dist / mul
+		}
 	}
 
 	return plist, nil
 }
 
-func geoDistance(lat1, lng1, lat2, lng2 float64, unit string) float64 {
-	dis := geohash.GetDistance(lng1, lat1, lng2, lat2)
+func extractUnit(unit string) (float64, error) {
 	switch unit {
+	case "m":
+		return 1, nil
 	case "km":
-		dis = dis / 1000
+		return 1000, nil
+	case "ft":
+		return 0.3048, nil
+	case "mi":
+		return 1609.34, nil
+	default:
+		return -1, errors.New("Unsupported unit provided. please use m, km, ft, mi")
 	}
-	return dis
 }

@@ -144,7 +144,8 @@ func GetAreasByRadiusWGS84(longitude, latitude, radius float64) (*Radius, error)
 	hash, err := Encode(
 		WGS84_LONG_RANGE, WGS84_LAT_RANGE,
 		longitude, latitude,
-		steps)
+		steps,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -152,28 +153,23 @@ func GetAreasByRadiusWGS84(longitude, latitude, radius float64) (*Radius, error)
 	neighbors := GetNeighbors(hash)
 	area := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, hash)
 
-	/* Check if the step is enough at the limits of the covered area.
-	 * Sometimes when the search area is near an edge of the
-	 * area, the estimated step is not small enough, since one of the
-	 * north / south / west / east square is too near to the search area
-	 * to cover everything. */
 	var decrStep bool
 
-	n := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, neighbors.North)
-	s := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, neighbors.South)
-	e := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, neighbors.East)
-	w := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, neighbors.West)
+	north := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, neighbors.North)
+	south := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, neighbors.South)
+	east := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, neighbors.East)
+	west := decode(WGS84_LONG_RANGE, WGS84_LAT_RANGE, neighbors.West)
 
-	if GetDistance(longitude, latitude, longitude, n.Latitude.Max) < radius {
+	if GetDistance(longitude, latitude, longitude, north.Latitude.Max) < radius {
 		decrStep = true
 	}
-	if GetDistance(longitude, latitude, longitude, s.Latitude.Min) < radius {
+	if GetDistance(longitude, latitude, longitude, south.Latitude.Min) < radius {
 		decrStep = true
 	}
-	if GetDistance(longitude, latitude, e.Longitude.Max, latitude) < radius {
+	if GetDistance(longitude, latitude, east.Longitude.Max, latitude) < radius {
 		decrStep = true
 	}
-	if GetDistance(longitude, latitude, w.Longitude.Min, latitude) < radius {
+	if GetDistance(longitude, latitude, west.Longitude.Min, latitude) < radius {
 		decrStep = true
 	}
 
