@@ -45,9 +45,10 @@ func TestNewGeo(t *testing.T) {
 	t.Log(pos[0])
 	t.Log(g.Hash("澳门特别行政区"))
 
-	t.Log(g.Dist([2]string{"成都市", "南部县"}, "km"))
+	t.Log(g.Dist([2]string{"成都市", "北京市"}, "km"))
 
-	radius, err := g.RadiusByMember("南部县", 100, "km")
+	g.Remove("石景山区", "房山区")
+	radius, err := g.RadiusByMember("北京市", 25, "km")
 	if err != nil {
 		t.Fatal(err)
 	}

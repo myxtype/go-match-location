@@ -3,8 +3,8 @@ package geo
 import (
 	"errors"
 	"fmt"
-	"github.com/myxtype/go-match-location/lib/geohash"
-	"github.com/myxtype/go-match-location/lib/sortedset"
+	"github.com/myxtype/go-match-location/pkg/geohash"
+	"github.com/myxtype/go-match-location/pkg/sortedset"
 )
 
 var (
