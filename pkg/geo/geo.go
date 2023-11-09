@@ -143,7 +143,7 @@ func (g *Geo) Hash(members ...string) ([]string, error) {
 			continue
 		}
 
-		str := geohash.ToString(uint64(elem.Score))
+		str := geohash.EncodeToString(uint64(elem.Score))
 		hashs[i] = str
 	}
 	return hashs, nil

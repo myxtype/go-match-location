@@ -42,7 +42,7 @@ func radDeg(ang float64) float64 {
  * From:  https://graphics.stanford.edu/~seander/bithacks.html#InterleaveBMN
  */
 func interleave64(xlo uint32, ylo uint32) uint64 {
-	var x, y uint64 = uint64(xlo), uint64(ylo)
+	var x, y = uint64(xlo), uint64(ylo)
 	x = (x | x<<s[5]) & b[4]
 	y = (y | y<<s[5]) & b[4]
 
@@ -131,9 +131,8 @@ func EncodeToBase32(hash uint64) []byte {
 	return buf
 }
 
-func ToString(hash uint64) string {
-	b := EncodeToBase32(hash)
-	return string(b)
+func EncodeToString(hash uint64) string {
+	return string(EncodeToBase32(hash))
 }
 
 func GetAreasByRadiusWGS84(longitude, latitude, radius float64) (*Radius, error) {

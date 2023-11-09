@@ -1,4 +1,4 @@
-package geo
+package region
 
 import (
 	"encoding/json"
@@ -16,18 +16,18 @@ type Region struct {
 	Districts []*Region `json:"districts"`
 }
 
-func LoadRegion() (*Region, error) {
-	f, err := os.Open("./region.json")
+func LoadRegion(file string) (*Region, error) {
+	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	b, err := io.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
 
 	var r Region
-	return &r, json.Unmarshal(b, &r)
+	return &r, json.Unmarshal(data, &r)
 }

@@ -1,24 +1,24 @@
 package geo
 
 import (
+	"github.com/myxtype/go-match-location/pkg/region"
 	"log"
 	"testing"
 )
 
 func regionGeo() *Geo {
-	re, _ := LoadRegion()
-
+	r, _ := region.LoadRegion("../region/region.json")
 	g := NewGeo()
 
-	addToGeo(g, re)
+	addToGeo(g, r)
 
 	return g
 }
 
-func addToGeo(g *Geo, region *Region) {
+func addToGeo(g *Geo, r *region.Region) {
 	var items []*GeoItem
 
-	for _, n := range region.Districts {
+	for _, n := range r.Districts {
 		items = append(items, &GeoItem{
 			Lng:    n.Center.Lng,
 			Lat:    n.Center.Lat,
