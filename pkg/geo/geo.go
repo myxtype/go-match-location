@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/myxtype/go-match-location/pkg/geohash"
 	"github.com/myxtype/go-match-location/pkg/sortedset"
+	"sync"
 )
 
 var (
@@ -12,6 +13,7 @@ var (
 )
 
 type Geo struct {
+	mx        sync.RWMutex
 	sortedSet *sortedset.SortedSet
 }
 
@@ -30,7 +32,10 @@ type GeoPoint struct {
 }
 
 func NewGeo() *Geo {
-	return &Geo{sortedSet: sortedset.Make()}
+	return &Geo{
+		mx:        sync.RWMutex{},
+		sortedSet: sortedset.Make(),
+	}
 }
 
 // Add a location into SortedSet
@@ -38,6 +43,9 @@ func (g *Geo) Add(items ...*GeoItem) error {
 	if len(items) == 0 {
 		return errors.New("ERR wrong number of arguments for 'geoadd' command")
 	}
+
+	g.mx.Lock()
+	defer g.mx.Unlock()
 
 	elements := make([]*sortedset.Element, len(items))
 	for i := 0; i < len(items); i++ {
@@ -71,6 +79,9 @@ func (g *Geo) Remove(members ...string) error {
 		return errors.New("ERR wrong number of arguments for 'geoadd' command")
 	}
 
+	g.mx.Lock()
+	defer g.mx.Unlock()
+
 	for i := 0; i < len(members); i++ {
 		g.sortedSet.Remove(members[i])
 	}
@@ -83,6 +94,9 @@ func (g *Geo) Pos(members ...string) ([]*GeoItem, error) {
 	if len(members) == 0 {
 		return nil, errors.New("ERR wrong number of arguments for 'geopos' command")
 	}
+
+	g.mx.RLock()
+	defer g.mx.RUnlock()
 
 	positions := make([]*GeoItem, len(members))
 	for i := 0; i < len(members); i++ {
@@ -105,6 +119,9 @@ func (g *Geo) Pos(members ...string) ([]*GeoItem, error) {
 
 // Dist returns the distance between two locations
 func (g *Geo) Dist(members [2]string, unit string) (float64, error) {
+	g.mx.RLock()
+	defer g.mx.RUnlock()
+
 	positions := make([][]float64, 2)
 
 	for i := 0; i < 2; i++ {
@@ -134,6 +151,9 @@ func (g *Geo) Hash(members ...string) ([]string, error) {
 		return nil, errors.New("ERR wrong number of arguments for 'geohash' command")
 	}
 
+	g.mx.RLock()
+	defer g.mx.RUnlock()
+
 	hashs := make([]string, len(members))
 	for i := 0; i < len(members); i++ {
 		member := members[i]
@@ -151,15 +171,22 @@ func (g *Geo) Hash(members ...string) ([]string, error) {
 
 // Radius returns members within max distance of given point
 func (g *Geo) Radius(lng, lat, radius float64, unit string) ([]*GeoPoint, error) {
+	g.mx.RLock()
+	defer g.mx.RUnlock()
+
 	mul, err := extractUnit(unit)
 	if err != nil {
 		return nil, err
 	}
+
 	return g.geoRadius0(lat, lng, radius*mul, unit)
 }
 
 // RadiusByMember returns members within max distance of given member's location
 func (g *Geo) RadiusByMember(member string, radius float64, unit string) ([]*GeoPoint, error) {
+	g.mx.RLock()
+	defer g.mx.RUnlock()
+
 	elem, ok := g.sortedSet.Get(member)
 	if !ok {
 		return nil, ErrNull
